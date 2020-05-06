@@ -12,7 +12,9 @@ struct freeze_info {
 	bool processed_frame;
 	obs_hotkey_pair_id hotkey;
 	float duration;
-	uint64_t duration_max;
+	uint32_t duration_max;
+	uint32_t refresh_interval;
+	float last_refresh;
 };
 
 static const char *freeze_get_name(void *type_data)
@@ -78,9 +80,8 @@ static void freeze_update(void *data, obs_data_t *settings)
 {
 	struct freeze_info *freeze = data;
 	freeze->duration_max = obs_data_get_int(settings, "duration");
-	freeze->cx = 0;
-	freeze->cy = 0;
-	free_textures(freeze);
+	freeze->refresh_interval =
+		obs_data_get_int(settings, "refresh_interval");
 }
 
 static void draw_frame(struct freeze_info *f)
@@ -151,6 +152,10 @@ static obs_properties_t *freeze_properties(void *data)
 	obs_property_t *p = obs_properties_add_int(
 		ppts, "duration", obs_module_text("Duration"), 0, 100000, 1000);
 	obs_property_int_set_suffix(p, "ms");
+	p = obs_properties_add_int(ppts, "refresh_interval",
+				   obs_module_text("RefreshInterval"), 0,
+				   100000, 1000);
+	obs_property_int_set_suffix(p, "ms");
 	return ppts;
 }
 
@@ -192,10 +197,17 @@ static void freeze_tick(void *data, float t)
 		f->duration += t;
 		if (f->duration_max && f->duration * 1000.0 > f->duration_max) {
 			obs_source_set_enabled(f->source, false);
+		} else if (f->refresh_interval &&
+			   f->duration > f->last_refresh &&
+			   (f->duration - f->last_refresh) * 1000.0 >=
+				   f->refresh_interval) {
+			f->processed_frame = false;
+			f->last_refresh = f->duration;
 		}
 	} else {
 		f->processed_frame = false;
 		f->duration = 0.0f;
+		f->last_refresh = 0.0f;
 	}
 	if (f->hotkey == OBS_INVALID_HOTKEY_PAIR_ID) {
 		obs_source_t *parent = obs_filter_get_parent(f->source);
