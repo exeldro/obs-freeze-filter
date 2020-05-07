@@ -4,8 +4,6 @@
 struct freeze_info {
 	obs_source_t *source;
 	gs_texrender_t *render;
-
-	uint64_t ts;
 	uint32_t cx;
 	uint32_t cy;
 	bool target_valid;
@@ -15,6 +13,11 @@ struct freeze_info {
 	uint32_t duration_max;
 	uint32_t refresh_interval;
 	float last_refresh;
+
+	uint32_t activate_action;
+	uint32_t deactivate_action;
+	uint32_t show_action;
+	uint32_t hide_action;
 };
 
 static const char *freeze_get_name(void *type_data)
@@ -82,6 +85,11 @@ static void freeze_update(void *data, obs_data_t *settings)
 	freeze->duration_max = obs_data_get_int(settings, "duration");
 	freeze->refresh_interval =
 		obs_data_get_int(settings, "refresh_interval");
+	freeze->activate_action = obs_data_get_int(settings, "activate_action");
+	freeze->deactivate_action =
+		obs_data_get_int(settings, "deactivate_action");
+	freeze->show_action = obs_data_get_int(settings, "show_action");
+	freeze->hide_action = obs_data_get_int(settings, "hide_action");
 }
 
 static void draw_frame(struct freeze_info *f)
@@ -146,6 +154,16 @@ static void freeze_video_render(void *data, gs_effect_t *effect)
 	freeze->processed_frame = true;
 }
 
+static void prop_list_add_actions(obs_property_t *p)
+{
+	obs_property_list_add_int(p, obs_module_text("None"),
+				  FREEZE_ACTION_NONE);
+	obs_property_list_add_int(p, obs_module_text("FreezeEnable"),
+				  FREEZE_ACTION_ENABLE);
+	obs_property_list_add_int(p, obs_module_text("FreezeDisable"),
+				  FREEZE_ACTION_DISABLE);
+}
+
 static obs_properties_t *freeze_properties(void *data)
 {
 	obs_properties_t *ppts = obs_properties_create();
@@ -156,6 +174,24 @@ static obs_properties_t *freeze_properties(void *data)
 				   obs_module_text("RefreshInterval"), 0,
 				   100000, 1000);
 	obs_property_int_set_suffix(p, "ms");
+
+	p = obs_properties_add_list(ppts, "activate_action",
+				    obs_module_text("ActivateAction"),
+				    OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	prop_list_add_actions(p);
+	p = obs_properties_add_list(ppts, "deactivate_action",
+				    obs_module_text("DeactivateAction"),
+				    OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	prop_list_add_actions(p);
+	p = obs_properties_add_list(ppts, "show_action",
+				    obs_module_text("ShowAction"),
+				    OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	prop_list_add_actions(p);
+	p = obs_properties_add_list(ppts, "hide_action",
+				    obs_module_text("HideAction"),
+				    OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+	prop_list_add_actions(p);
+
 	return ppts;
 }
 
@@ -224,6 +260,41 @@ static void freeze_tick(void *data, float t)
 	check_size(f);
 }
 
+void freeze_do_action(struct freeze_info *freeze, uint32_t action)
+{
+	if (action == FREEZE_ACTION_ENABLE &&
+	    !obs_source_enabled(freeze->source)) {
+		obs_source_set_enabled(freeze->source, true);
+	} else if (action == FREEZE_ACTION_DISABLE &&
+		   obs_source_enabled(freeze->source)) {
+		obs_source_set_enabled(freeze->source, false);
+	}
+}
+
+void freeze_activate(void *data)
+{
+	struct freeze_info *freeze = data;
+	freeze_do_action(freeze, freeze->activate_action);
+}
+
+void freeze_deactivate(void *data)
+{
+	struct freeze_info *freeze = data;
+	freeze_do_action(freeze, freeze->deactivate_action);
+}
+
+void freeze_show(void *data)
+{
+	struct freeze_info *freeze = data;
+	freeze_do_action(freeze, freeze->show_action);
+}
+
+void freeze_hide(void *data)
+{
+	struct freeze_info *freeze = data;
+	freeze_do_action(freeze, freeze->hide_action);
+}
+
 struct obs_source_info freeze_filter = {
 	.id = "freeze_filter",
 	.type = OBS_SOURCE_TYPE_FILTER,
@@ -236,6 +307,10 @@ struct obs_source_info freeze_filter = {
 	.get_properties = freeze_properties,
 	.get_defaults = freeze_defaults,
 	.video_tick = freeze_tick,
+	.activate = freeze_activate,
+	.deactivate = freeze_deactivate,
+	.show = freeze_show,
+	.hide = freeze_hide,
 };
 
 OBS_DECLARE_MODULE()
