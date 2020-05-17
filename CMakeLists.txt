@@ -16,4 +16,5 @@ add_library(freeze-filter MODULE
 target_link_libraries(freeze-filter
 	libobs)
 
+set_target_properties(freeze-filter PROPERTIES FOLDER "plugins/exeldro")
 install_obs_plugin_with_data(freeze-filter data)
