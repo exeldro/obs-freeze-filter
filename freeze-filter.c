@@ -64,24 +64,6 @@ static inline bool check_size(struct freeze_info *f)
 	return false;
 }
 
-static void *freeze_create(obs_data_t *settings, obs_source_t *source)
-{
-	struct freeze_info *freeze = bzalloc(sizeof(struct freeze_info));
-	freeze->source = source;
-	freeze->hotkey = OBS_INVALID_HOTKEY_PAIR_ID;
-	return freeze;
-}
-
-static void freeze_destroy(void *data)
-{
-	struct freeze_info *freeze = data;
-	if (freeze->hotkey != OBS_INVALID_HOTKEY_PAIR_ID) {
-		obs_hotkey_pair_unregister(freeze->hotkey);
-	}
-	free_textures(freeze);
-	bfree(freeze);
-}
-
 static void freeze_update(void *data, obs_data_t *settings)
 {
 	struct freeze_info *freeze = data;
@@ -95,6 +77,26 @@ static void freeze_update(void *data, obs_data_t *settings)
 	freeze->hide_action = obs_data_get_int(settings, "hide_action");
 	freeze->action_delay = obs_data_get_int(settings, "action_delay");
 }
+
+static void *freeze_create(obs_data_t *settings, obs_source_t *source)
+{
+	struct freeze_info *freeze = bzalloc(sizeof(struct freeze_info));
+	freeze->source = source;
+	freeze->hotkey = OBS_INVALID_HOTKEY_PAIR_ID;
+	freeze_update(freeze, settings);
+	return freeze;
+}
+
+static void freeze_destroy(void *data)
+{
+	struct freeze_info *freeze = data;
+	if (freeze->hotkey != OBS_INVALID_HOTKEY_PAIR_ID) {
+		obs_hotkey_pair_unregister(freeze->hotkey);
+	}
+	free_textures(freeze);
+	bfree(freeze);
+}
+
 
 static void draw_frame(struct freeze_info *f)
 {
