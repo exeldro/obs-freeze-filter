@@ -1,0 +1,81 @@
+uniform float4x4 ViewProj;
+uniform texture2d image;
+uniform float maskLeft;
+uniform float maskRight;
+uniform float maskTop;
+uniform float maskBottom;
+
+sampler_state def_sampler {
+	Filter   = Linear;
+	AddressU = Clamp;
+	AddressV = Clamp;
+};
+
+struct VertInOut {
+	float4 pos : POSITION;
+	float2 uv  : TEXCOORD0;
+};
+
+VertInOut VSDefault(VertInOut vert_in)
+{
+	VertInOut vert_out;
+	vert_out.pos = mul(float4(vert_in.pos.xyz, 1.0), ViewProj);
+	vert_out.uv  = vert_in.uv;
+	return vert_out;
+}
+
+float4 PSDrawPart(VertInOut vert_in) : TARGET
+{
+	float alphaHorizontal = 0.0;
+	if(maskLeft + maskRight > 1.0){
+		if(vert_in.uv.x > maskLeft || 1.0 - vert_in.uv.x > maskRight){
+			alphaHorizontal = 0.0;
+		}else{
+			alphaHorizontal = 1.0;
+		}
+	}else if(maskLeft > 0.0 || maskRight > 0.0){
+		if((maskLeft <= 0.0 || vert_in.uv.x > maskLeft) && (maskRight <= 0.0 || 1.0-vert_in.uv.x > maskRight)){
+			alphaHorizontal = 0.0;
+		}else{
+			alphaHorizontal = 1.0;
+		}
+	}
+	float alphaVertical = 0.0;
+	if(maskTop + maskBottom > 1.0){
+		if(vert_in.uv.y > maskTop || 1.0 - vert_in.uv.y > maskBottom){
+			alphaVertical = 0.0;
+		}else{
+			alphaVertical = 1.0;
+		}
+	}else if(maskTop > 0.0 || maskBottom > 0.0){
+		if((maskTop <= 0.0 || vert_in.uv.y > maskTop) && (maskBottom <= 0.0 || 1.0-vert_in.uv.y > maskBottom)){
+			alphaVertical = 0.0;
+		}else{
+			alphaVertical = 1.0;
+		}
+	}
+	float alphaAll = 0.0;
+	if(maskTop + maskBottom > 1.0 && maskLeft + maskRight > 1.0){
+		if(alphaVertical < alphaHorizontal)
+			alphaAll = alphaVertical;
+		else
+			alphaAll = alphaHorizontal;
+	}else{
+		if(alphaVertical > alphaHorizontal)
+			alphaAll = alphaVertical;
+		else if(alphaHorizontal > alphaVertical || alphaHorizontal > 0.0)
+			alphaAll = alphaHorizontal;
+	}
+	if(alphaAll <= 0.0)
+		return float4(0.0,0.0,0.0,0.0);
+	return image.Sample(def_sampler, vert_in.uv);
+}
+
+technique Draw
+{
+	pass
+	{
+		vertex_shader = VSDefault(vert_in);
+		pixel_shader  = PSDrawPart(vert_in);
+	}
+}

@@ -1,4 +1,4 @@
-project(freeze-filter VERSION 0.2.0)
+project(freeze-filter VERSION 0.3.0)
 set(PROJECT_FULL_NAME "Freeze Filter")
 
 set(freeze-filter_HEADERS
