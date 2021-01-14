@@ -1,4 +1,4 @@
-project(freeze-filter VERSION 0.3.1)
+project(freeze-filter VERSION 0.3.2)
 set(PROJECT_FULL_NAME "Freeze Filter")
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/version.h.in ${CMAKE_CURRENT_SOURCE_DIR}/version.h)

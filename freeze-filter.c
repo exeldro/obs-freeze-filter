@@ -22,6 +22,8 @@ struct freeze_info {
 
 	uint32_t delayed_action;
 	uint64_t action_delay;
+	uint64_t start_delay;
+	uint64_t end_delay;
 	float delay_duration;
 
 	bool mask;
@@ -87,7 +89,8 @@ static void freeze_update(void *data, obs_data_t *settings)
 		obs_data_get_int(settings, "deactivate_action");
 	freeze->show_action = obs_data_get_int(settings, "show_action");
 	freeze->hide_action = obs_data_get_int(settings, "hide_action");
-	freeze->action_delay = obs_data_get_int(settings, "action_delay");
+	freeze->start_delay = obs_data_get_int(settings, "start_delay");
+	freeze->end_delay = obs_data_get_int(settings, "end_delay");
 	freeze->mask = obs_data_get_bool(settings, "mask");
 	freeze->mask_left =
 		(float)obs_data_get_double(settings, "mask_left") / 100.0f;
@@ -226,6 +229,16 @@ static obs_properties_t *freeze_properties(void *data)
 				   100000, 1000);
 	obs_property_int_set_suffix(p, "ms");
 
+	p = obs_properties_add_int(ppts, "start_delay",
+				   obs_module_text("StartDelay"), 0, 100000,
+				   1000);
+	obs_property_int_set_suffix(p, "ms");
+
+	p = obs_properties_add_int(ppts, "end_delay",
+				   obs_module_text("EndDelay"), 0, 100000,
+				   1000);
+	obs_property_int_set_suffix(p, "ms");
+
 	obs_properties_t *group = obs_properties_create();
 
 	p = obs_properties_add_float_slider(group, "mask_left",
@@ -265,10 +278,7 @@ static obs_properties_t *freeze_properties(void *data)
 				    obs_module_text("HideAction"),
 				    OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
 	prop_list_add_actions(p);
-	p = obs_properties_add_int(group, "action_delay",
-				   obs_module_text("ActionDelay"), 0, 100000,
-				   1000);
-	obs_property_int_set_suffix(p, "ms");
+
 	obs_properties_add_group(ppts, "action", obs_module_text("Action"),
 				 OBS_GROUP_NORMAL, group);
 
@@ -277,6 +287,31 @@ static obs_properties_t *freeze_properties(void *data)
 
 void freeze_defaults(obs_data_t *settings)
 {
+}
+
+void freeze_do_action(struct freeze_info *freeze, uint32_t action)
+{
+	if (action == FREEZE_ACTION_ENABLE &&
+	    !obs_source_enabled(freeze->source)) {
+		obs_source_set_enabled(freeze->source, true);
+	} else if (action == FREEZE_ACTION_DISABLE &&
+		   obs_source_enabled(freeze->source)) {
+			obs_source_set_enabled(freeze->source, false);
+		
+	}
+}
+
+void freeze_do_or_delay_action(struct freeze_info *freeze, uint32_t action)
+{
+	if (action == FREEZE_ACTION_NONE)
+		return;
+	if ((freeze->start_delay && action == FREEZE_ACTION_ENABLE) ||
+	    (freeze->end_delay && action == FREEZE_ACTION_DISABLE)) {
+		freeze->delay_duration = 0.0f;
+		freeze->delayed_action = action;
+	} else {
+		freeze_do_action(freeze, action);
+	}
 }
 
 bool freeze_enable_hotkey(void *data, obs_hotkey_pair_id id,
@@ -289,8 +324,7 @@ bool freeze_enable_hotkey(void *data, obs_hotkey_pair_id id,
 	if (obs_source_enabled(freeze->source))
 		return false;
 
-	obs_source_set_enabled(freeze->source, true);
-
+	freeze_do_or_delay_action(freeze, FREEZE_ACTION_ENABLE);
 	return true;
 }
 
@@ -302,30 +336,20 @@ bool freeze_disable_hotkey(void *data, obs_hotkey_pair_id id,
 		return false;
 	if (!obs_source_enabled(freeze->source))
 		return false;
-
-	obs_source_set_enabled(freeze->source, false);
+	freeze_do_or_delay_action(freeze, FREEZE_ACTION_DISABLE);
 	return true;
-}
-
-void freeze_do_action(struct freeze_info *freeze, uint32_t action)
-{
-	if (action == FREEZE_ACTION_ENABLE &&
-	    !obs_source_enabled(freeze->source)) {
-		obs_source_set_enabled(freeze->source, true);
-	} else if (action == FREEZE_ACTION_DISABLE &&
-		   obs_source_enabled(freeze->source)) {
-		obs_source_set_enabled(freeze->source, false);
-	}
 }
 
 static void freeze_tick(void *data, float t)
 {
-
 	struct freeze_info *f = data;
 
 	if (f->delayed_action != FREEZE_ACTION_NONE) {
 		f->delay_duration += t;
-		if (f->delay_duration * 1000.0 >= f->action_delay) {
+		if (f->delay_duration * 1000.0 >=
+		    (f->delayed_action == FREEZE_ACTION_ENABLE
+			     ? f->start_delay
+			     : f->end_delay)) {
 			freeze_do_action(f, f->delayed_action);
 			f->delayed_action = FREEZE_ACTION_NONE;
 		}
@@ -366,47 +390,25 @@ static void freeze_tick(void *data, float t)
 void freeze_activate(void *data)
 {
 	struct freeze_info *freeze = data;
-	if (freeze->action_delay &&
-	    freeze->activate_action != FREEZE_ACTION_NONE) {
-		freeze->delay_duration = 0.0f;
-		freeze->delayed_action = freeze->activate_action;
-	} else {
-		freeze_do_action(freeze, freeze->activate_action);
-	}
+	freeze_do_or_delay_action(freeze, freeze->activate_action);
 }
 
 void freeze_deactivate(void *data)
 {
 	struct freeze_info *freeze = data;
-	if (freeze->action_delay &&
-	    freeze->deactivate_action != FREEZE_ACTION_NONE) {
-		freeze->delay_duration = 0.0f;
-		freeze->delayed_action = freeze->deactivate_action;
-	} else {
-		freeze_do_action(freeze, freeze->deactivate_action);
-	}
+	freeze_do_or_delay_action(freeze, freeze->deactivate_action);
 }
 
 void freeze_show(void *data)
 {
 	struct freeze_info *freeze = data;
-	if (freeze->action_delay && freeze->show_action != FREEZE_ACTION_NONE) {
-		freeze->delay_duration = 0.0f;
-		freeze->delayed_action = freeze->show_action;
-	} else {
-		freeze_do_action(freeze, freeze->show_action);
-	}
+	freeze_do_or_delay_action(freeze, freeze->show_action);
 }
 
 void freeze_hide(void *data)
 {
 	struct freeze_info *freeze = data;
-	if (freeze->action_delay && freeze->hide_action != FREEZE_ACTION_NONE) {
-		freeze->delay_duration = 0.0f;
-		freeze->delayed_action = freeze->hide_action;
-	} else {
-		freeze_do_action(freeze, freeze->hide_action);
-	}
+	freeze_do_or_delay_action(freeze, freeze->hide_action);
 }
 
 struct obs_source_info freeze_filter = {
