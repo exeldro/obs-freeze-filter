@@ -1,5 +1,6 @@
 #include <obs-module.h>
 #include "freeze-filter.h"
+#include "version.h"
 
 struct freeze_info {
 	obs_source_t *source;
@@ -442,6 +443,7 @@ MODULE_EXPORT const char *obs_module_name(void)
 
 bool obs_module_load(void)
 {
+	blog(LOG_INFO, "[Freeze Filter] loaded version %s", PROJECT_VERSION);
 	obs_register_source(&freeze_filter);
 	return true;
 }

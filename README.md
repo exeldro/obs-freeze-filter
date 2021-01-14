@@ -1,6 +1,9 @@
-# Source Switcher for OBS Studio
+# Freeze Filter for OBS Studio
 
 Plugin for OBS Studio to freeze a source using a filter
+
+# Download
+https://obsproject.com/forum/resources/freeze-filter.950/
 
 # Build
 - Build OBS Studio: https://obsproject.com/wiki/Install-Instructions
