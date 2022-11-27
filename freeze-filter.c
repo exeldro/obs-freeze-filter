@@ -81,14 +81,17 @@ static inline bool check_size(struct freeze_info *f)
 static void freeze_update(void *data, obs_data_t *settings)
 {
 	struct freeze_info *freeze = data;
-	freeze->duration_max = obs_data_get_int(settings, "duration");
+	freeze->duration_max = (uint32_t)obs_data_get_int(settings, "duration");
 	freeze->refresh_interval =
-		obs_data_get_int(settings, "refresh_interval");
-	freeze->activate_action = obs_data_get_int(settings, "activate_action");
+		(uint32_t)obs_data_get_int(settings, "refresh_interval");
+	freeze->activate_action =
+		(uint32_t)obs_data_get_int(settings, "activate_action");
 	freeze->deactivate_action =
-		obs_data_get_int(settings, "deactivate_action");
-	freeze->show_action = obs_data_get_int(settings, "show_action");
-	freeze->hide_action = obs_data_get_int(settings, "hide_action");
+		(uint32_t)obs_data_get_int(settings, "deactivate_action");
+	freeze->show_action =
+		(uint32_t)obs_data_get_int(settings, "show_action");
+	freeze->hide_action =
+		(uint32_t)obs_data_get_int(settings, "hide_action");
 	freeze->start_delay = obs_data_get_int(settings, "start_delay");
 	freeze->end_delay = obs_data_get_int(settings, "end_delay");
 	freeze->mask = obs_data_get_bool(settings, "mask");
@@ -108,7 +111,7 @@ static void *freeze_create(obs_data_t *settings, obs_source_t *source)
 	freeze->source = source;
 	freeze->hotkey = OBS_INVALID_HOTKEY_PAIR_ID;
 	obs_enter_graphics();
-	char *effect_path = obs_module_file("freeze_part.effect");
+	char *effect_path = obs_module_file("effects/freeze_part.effect");
 	freeze->effect = gs_effect_create_from_file(effect_path, NULL);
 	bfree(effect_path);
 
@@ -142,7 +145,8 @@ static void draw_frame(struct freeze_info *f)
 			gs_effect_get_param_by_name(effect, "image");
 		gs_effect_set_texture(image, tex);
 		if (f->effect) {
-			gs_eparam_t *p = gs_effect_get_param_by_name(effect, "maskLeft");
+			gs_eparam_t *p =
+				gs_effect_get_param_by_name(effect, "maskLeft");
 			gs_effect_set_float(p, f->mask ? f->mask_left : 1.0f);
 			p = gs_effect_get_param_by_name(effect, "maskRight");
 			gs_effect_set_float(p, f->mask ? f->mask_right : 1.0f);
@@ -163,6 +167,7 @@ static void draw_frame(struct freeze_info *f)
 
 static void freeze_video_render(void *data, gs_effect_t *effect)
 {
+	UNUSED_PARAMETER(effect);
 	struct freeze_info *freeze = data;
 	obs_source_t *target = obs_filter_get_target(freeze->source);
 	obs_source_t *parent = obs_filter_get_parent(freeze->source);
@@ -220,6 +225,7 @@ static void prop_list_add_actions(obs_property_t *p)
 
 static obs_properties_t *freeze_properties(void *data)
 {
+	UNUSED_PARAMETER(data);
 	obs_properties_t *ppts = obs_properties_create();
 	obs_property_t *p = obs_properties_add_int(
 		ppts, "duration", obs_module_text("Duration"), 0, 100000, 1000);
@@ -282,11 +288,17 @@ static obs_properties_t *freeze_properties(void *data)
 	obs_properties_add_group(ppts, "action", obs_module_text("Action"),
 				 OBS_GROUP_NORMAL, group);
 
+	obs_properties_add_text(
+		ppts, "plugin_info",
+		"<a href=\"https://obsproject.com/forum/resources/freeze-filter.950/\">Freeze Filter</a> (" PROJECT_VERSION
+		") by <a href=\"https://www.exeldro.com\">Exeldro</a>",
+		OBS_TEXT_INFO);
 	return ppts;
 }
 
 void freeze_defaults(obs_data_t *settings)
 {
+	UNUSED_PARAMETER(settings);
 }
 
 void freeze_do_action(struct freeze_info *freeze, uint32_t action)
@@ -296,8 +308,7 @@ void freeze_do_action(struct freeze_info *freeze, uint32_t action)
 		obs_source_set_enabled(freeze->source, true);
 	} else if (action == FREEZE_ACTION_DISABLE &&
 		   obs_source_enabled(freeze->source)) {
-			obs_source_set_enabled(freeze->source, false);
-		
+		obs_source_set_enabled(freeze->source, false);
 	}
 }
 
@@ -317,6 +328,8 @@ void freeze_do_or_delay_action(struct freeze_info *freeze, uint32_t action)
 bool freeze_enable_hotkey(void *data, obs_hotkey_pair_id id,
 			  obs_hotkey_t *hotkey, bool pressed)
 {
+	UNUSED_PARAMETER(id);
+	UNUSED_PARAMETER(hotkey);
 	struct freeze_info *freeze = data;
 	if (!pressed)
 		return false;
@@ -331,6 +344,8 @@ bool freeze_enable_hotkey(void *data, obs_hotkey_pair_id id,
 bool freeze_disable_hotkey(void *data, obs_hotkey_pair_id id,
 			   obs_hotkey_t *hotkey, bool pressed)
 {
+	UNUSED_PARAMETER(id);
+	UNUSED_PARAMETER(hotkey);
 	struct freeze_info *freeze = data;
 	if (!pressed)
 		return false;
