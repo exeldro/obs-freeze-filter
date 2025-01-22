@@ -25,6 +25,7 @@ SolidCompression=yes
 LZMAAlgorithm=1
 ; Other Information
 DefaultDirName={code:GetDirName}
+AppendDefaultDirName=no
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir="package"
@@ -105,4 +106,15 @@ begin
       Result := 2;
   end else
     Result := 1;
+end;
+
+/////////////////////////////////////////////////////////////////////
+function NextButtonClick(PageId: Integer): Boolean;
+begin
+    Result := True;
+    if (PageId = wpSelectDir) and not FileExists(ExpandConstant('{app}\bin\64bit\obs64.exe')) then begin
+        MsgBox('OBS Studio (bin\64bit\obs64.exe) does not seem to be installed in that folder.  Please select the correct folder.', mbError, MB_OK);
+        Result := False;
+        exit;
+    end;
 end;
