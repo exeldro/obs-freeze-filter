@@ -2,6 +2,8 @@
 #include "freeze-filter.h"
 #include "version.h"
 #include <util/platform.h>
+#include <obs-frontend-api.h>
+
 
 struct freeze_info {
 	obs_source_t *source;
@@ -12,6 +14,7 @@ struct freeze_info {
 	bool processed_frame;
 	bool log_enable;
 	obs_hotkey_pair_id hotkey;
+	obs_hotkey_id screenshot_hotkey;
 	float duration;
 	uint32_t duration_max;
 	uint32_t refresh_interval;
@@ -104,6 +107,7 @@ static void *freeze_create(obs_data_t *settings, obs_source_t *source)
 	struct freeze_info *freeze = bzalloc(sizeof(struct freeze_info));
 	freeze->source = source;
 	freeze->hotkey = OBS_INVALID_HOTKEY_PAIR_ID;
+	freeze->screenshot_hotkey = OBS_INVALID_HOTKEY_ID;
 	obs_enter_graphics();
 	char *effect_path = obs_module_file("effects/freeze_part.effect");
 	char *abs_path = os_get_abs_path_ptr(effect_path);
@@ -125,6 +129,9 @@ static void freeze_destroy(void *data)
 	struct freeze_info *freeze = data;
 	if (freeze->hotkey != OBS_INVALID_HOTKEY_PAIR_ID) {
 		obs_hotkey_pair_unregister(freeze->hotkey);
+	}
+	if (freeze->screenshot_hotkey != OBS_INVALID_HOTKEY_ID) {
+		obs_hotkey_unregister(freeze->screenshot_hotkey);
 	}
 	free_textures(freeze, true);
 	bfree(freeze);
@@ -333,6 +340,14 @@ bool freeze_disable_hotkey(void *data, obs_hotkey_pair_id id, obs_hotkey_t *hotk
 	freeze_do_or_delay_action(freeze, FREEZE_ACTION_DISABLE);
 	return true;
 }
+void freeze_screenshot_hotkey(void* data, obs_hotkey_id id, obs_hotkey_t* hotkey, bool pressed) {
+	UNUSED_PARAMETER(id);
+	UNUSED_PARAMETER(hotkey);
+	struct freeze_info *freeze = data;
+	if (!pressed)
+		return;
+	obs_frontend_take_source_screenshot(freeze->source);
+}
 
 static void freeze_tick(void *data, float t)
 {
@@ -384,6 +399,13 @@ static void freeze_tick(void *data, float t)
 			f->hotkey = obs_hotkey_pair_register_source(parent, "Freeze.Enable", obs_module_text("FreezeEnable"),
 								    "Freeze.Disable", obs_module_text("FreezeDisable"),
 								    freeze_enable_hotkey, freeze_disable_hotkey, f, f);
+		}
+	}
+	if (f->screenshot_hotkey == OBS_INVALID_HOTKEY_ID) {
+		obs_source_t *parent = obs_filter_get_parent(f->source);
+		if (parent) {
+			f->screenshot_hotkey = obs_hotkey_register_source(parent, "Freeze.Screenshot",
+									  obs_module_text("Screenshot"), freeze_screenshot_hotkey, f);
 		}
 	}
 	if (check_size(f))

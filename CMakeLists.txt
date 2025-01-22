@@ -26,6 +26,9 @@ if(BUILD_OUT_OF_TREE)
 	find_package(libobs REQUIRED)
 	find_package(obs-frontend-api REQUIRED)
 	include(cmake/ObsPluginHelpers.cmake)
+	set(OBS_FRONTEND_API_NAME "obs-frontend-api")
+else()
+	set(OBS_FRONTEND_API_NAME "frontend-api")
 endif()
   
 if(OS_WINDOWS)
@@ -51,6 +54,7 @@ elseif(OS_MACOS)
 endif()
 
 target_link_libraries(${PROJECT_NAME}
+	OBS::${OBS_FRONTEND_API_NAME}
 	OBS::libobs)
 
 if(BUILD_OUT_OF_TREE)
@@ -63,10 +67,12 @@ if(BUILD_OUT_OF_TREE)
     set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "")
     install(TARGETS ${PROJECT_NAME}
         LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/${LIB_OUT_DIR})
-    install(DIRECTORY data/locale
+    install(DIRECTORY data/effects data/locale
         DESTINATION ${CMAKE_INSTALL_PREFIX}/${DATA_OUT_DIR})
     setup_plugin_target(${PROJECT_NAME})
 else()
+    target_include_directories(${PROJECT_NAME} PRIVATE
+        "${CMAKE_SOURCE_DIR}/UI/obs-frontend-api")
     if(OBS_CMAKE_VERSION VERSION_GREATER_EQUAL 3.0.0)
         set_target_properties_obs(${PROJECT_NAME} PROPERTIES FOLDER "plugins/exeldro" PREFIX "")
     else()
@@ -74,4 +80,3 @@ else()
         setup_plugin_target(${PROJECT_NAME})
     endif()
 endif()
-
