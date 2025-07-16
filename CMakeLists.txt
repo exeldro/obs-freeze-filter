@@ -6,7 +6,7 @@ else()
   cmake_minimum_required(VERSION 3.18)
 endif()
 
-project(freeze-filter VERSION 0.3.4)
+project(freeze-filter VERSION 0.3.5)
 set(PROJECT_FULL_NAME "Freeze Filter")
 
 # Set new UUIDs when you start to create a new plugin.
