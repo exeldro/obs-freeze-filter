@@ -76,15 +76,6 @@ jobs:
           print "ccacheDate=$(date +"%Y-%m-%d")" >> $GITHUB_OUTPUT
           print "commitHash=${"$(git rev-parse HEAD)"[0,9]}" >> $GITHUB_OUTPUT
 
-      - name: Restore Compilation Cache
-        id: ccache-cache
-        uses: actions/cache@v4.0.0
-        with:
-          path: ${{ github.workspace }}/.ccache
-          key: macos-${{ matrix.arch }}-ccache-plugin-${{ steps.setup.outputs.ccacheDate }}
-          restore-keys: |
-            macos-${{ matrix.arch }}-ccache-plugin-
-
       - name: Check for GitHub Labels
         id: seekingTesters
         if: ${{ github.event_name == 'pull_request' }}
@@ -142,7 +133,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ubuntu: ['ubuntu-20.04', 'ubuntu-22.04']
+        ubuntu: ['ubuntu-22.04']
     steps:
       - name: Checkout
         uses: actions/checkout@v4.1.1
@@ -165,7 +156,7 @@ jobs:
         shell: bash
         run: |
           mkdir ./build
-          cmake -S . -B "./build" -G Ninja -DCMAKE_BUILD_TYPE="RelWithDebInfo" -DLINUX_PORTABLE=OFF -DENABLE_AJA=OFF -DENABLE_NEW_MPEGTS_OUTPUT=OFF -DBUILD_CAPTIONS=OFF -DWITH_RTMPS=OFF -DBUILD_BROWSER=OFF -DBUILD_VIRTUALCAM=OFF -DBUILD_VST=OFF -DENABLE_PIPEWIRE=OFF -DENABLE_SCRIPTING=OFF
+          cmake -S . -B "./build" -G Ninja -DCMAKE_BUILD_TYPE="RelWithDebInfo" -DLINUX_PORTABLE=OFF -DENABLE_AJA=OFF -DENABLE_NEW_MPEGTS_OUTPUT=OFF -DBUILD_CAPTIONS=OFF -DWITH_RTMPS=OFF -DBUILD_BROWSER=OFF -DBUILD_VIRTUALCAM=OFF -DBUILD_VST=OFF -DENABLE_PIPEWIRE=OFF -DENABLE_SCRIPTING=OFF -DENABLE_WEBSOCKET=OFF
       - name: 'Build'
         shell: bash
         run: |
@@ -219,7 +210,7 @@ jobs:
           path: plugins/${{ env.PLUGIN_NAME}}
       - name: Add plugin to obs cmake
         shell: cmd
-        run: echo add_subdirectory(${{ env.PLUGIN_NAME }}) >> plugins/CMakeLists.txt
+        run: echo add_subdirectory(${{ env.PLUGIN_NAME }}) > plugins/CMakeLists.txt
       - name: Fetch Git Tags
         run: git fetch --prune --tags --unshallow
       - name: 'Install prerequisite: QT'
