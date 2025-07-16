@@ -439,7 +439,7 @@ void freeze_hide(void *data)
 struct obs_source_info freeze_filter = {
 	.id = "freeze_filter",
 	.type = OBS_SOURCE_TYPE_FILTER,
-	.output_flags = OBS_OUTPUT_VIDEO,
+	.output_flags = OBS_OUTPUT_VIDEO | OBS_SOURCE_SRGB,
 	.get_name = freeze_get_name,
 	.create = freeze_create,
 	.destroy = freeze_destroy,
